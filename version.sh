@@ -69,13 +69,13 @@ determine_version_bump() {
   # Initialize bump type
   bump_type="patch"
 
-  # Check for breaking changes (major bump)
+  # Look for a breaking change (major bump)
   if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
     bump_type="major"
-  # Check for feature commits (minor bump)
+  # Look for feature commits (minor bump)
   elif echo "$COMMITS" | grep -q "^feat"; then
     bump_type="minor"
-  # Check for bug fixes (patch bump)
+  # Look for fix commits (patch bump)
   elif echo "$COMMITS" | grep -q "^fix"; then
     bump_type="patch"
   fi
@@ -93,7 +93,7 @@ if [ "$BUMP_TYPE" == "nochange" ]; then
   exit 0
 fi
 
-# If no tags exist (first run), start with version 0.1.0 or whatever base version you prefer
+# If no tags exist (first run), start with version 0.1.0 or your preferred base version
 if [ "$BUMP_TYPE" == "no_tags" ]; then
   NEW_VERSION="0.1.0"
   echo "🔍 No tags found. Starting version at $NEW_VERSION"
