@@ -1,0 +1,105 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+# File where the version is stored
+VERSION_FILE="version.txt"
+
+# Check if version.txt exists
+if [ ! -f "$VERSION_FILE" ]; then
+  echo "❌ Error: $VERSION_FILE not found."
+  exit 1
+fi
+
+# Read current version from version.txt
+CURRENT_VERSION=$(cat "$VERSION_FILE")
+echo "📦 Current version: $CURRENT_VERSION"
+
+# Function to increment version
+increment_version() {
+  local version=$1
+  local type=$2
+
+  # Split the version into major, minor, patch
+  IFS='.' read -r -a version_parts <<< "$version"
+  major=${version_parts[0]}
+  minor=${version_parts[1]}
+  patch=${version_parts[2]}
+
+  # Increment based on the type (major, minor, patch)
+  if [ "$type" == "major" ]; then
+    ((major++))
+    minor=0
+    patch=0
+  elif [ "$type" == "minor" ]; then
+    ((minor++))
+    patch=0
+  elif [ "$type" == "patch" ]; then
+    ((patch++))
+  else
+    echo "❌ Invalid version bump type: $type. Use 'major', 'minor', or 'patch'."
+    exit 1
+  fi
+
+  # Return new version
+  echo "$major.$minor.$patch"
+}
+
+# Function to determine the version bump based on commit messages
+determine_version_bump() {
+  # Get the commit messages since the last tag
+  COMMITS=$(git log $(git describe --tags --abbrev=0)..HEAD --oneline)
+
+  # If there are no new commits, return 'nochange' bump type
+  if [ -z "$COMMITS" ]; then
+    echo "nochange"
+    return
+  fi
+
+  # Initialize bump type
+  bump_type="patch"
+
+  # Check for breaking changes (major bump)
+  if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
+    bump_type="major"
+  # Check for feature commits (minor bump)
+  elif echo "$COMMITS" | grep -q "^feat"; then
+    bump_type="minor"
+  # Check for bug fixes (patch bump)
+  elif echo "$COMMITS" | grep -q "^fix"; then
+    bump_type="patch"
+  fi
+
+  # Return the bump type
+  echo "$bump_type"
+}
+
+# Determine the version bump type based on commit messages
+BUMP_TYPE=$(determine_version_bump)
+
+# If there are no changes (no new commits), exit the script
+if [ "$BUMP_TYPE" == "nochange" ]; then
+  echo "🔍 No new commits since last tag. Skipping version bump."
+  exit 0
+fi
+
+# Bump version based on commit messages
+NEW_VERSION=$(increment_version "$CURRENT_VERSION" "$BUMP_TYPE")
+
+echo "🔄 Bumping version to $NEW_VERSION"
+
+# Update version.txt with the new version
+echo "$NEW_VERSION" > "$VERSION_FILE"
+
+# Commit and tag the new version
+echo "🔖 Committing new version and tagging Git..."
+git add "$VERSION_FILE"
+git commit -m "chore: bump version to $NEW_VERSION"
+git tag "v$NEW_VERSION"
+
+# Push changes and tags to Git
+echo "📤 Pushing changes and tags to Git..."
+git push && git push --tags
+
+echo "✅ Release complete! New version: $NEW_VERSION"
