@@ -48,8 +48,17 @@ increment_version() {
 
 # Function to determine the version bump based on commit messages
 determine_version_bump() {
+  # Check if tags exist
+  LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+
+  # If no tags exist, fallback to first commit
+  if [ -z "$LAST_TAG" ]; then
+    echo "no_tags"
+    return
+  fi
+
   # Get the commit messages since the last tag
-  COMMITS=$(git log $(git describe --tags --abbrev=0)..HEAD --oneline)
+  COMMITS=$(git log $LAST_TAG..HEAD --oneline)
 
   # If there are no new commits, return 'nochange' bump type
   if [ -z "$COMMITS" ]; then
@@ -84,10 +93,15 @@ if [ "$BUMP_TYPE" == "nochange" ]; then
   exit 0
 fi
 
-# Bump version based on commit messages
-NEW_VERSION=$(increment_version "$CURRENT_VERSION" "$BUMP_TYPE")
-
-echo "🔄 Bumping version to $NEW_VERSION"
+# If no tags exist (first run), start with version 0.1.0 or whatever base version you prefer
+if [ "$BUMP_TYPE" == "no_tags" ]; then
+  NEW_VERSION="0.1.0"
+  echo "🔍 No tags found. Starting version at $NEW_VERSION"
+else
+  # Bump version based on commit messages
+  NEW_VERSION=$(increment_version "$CURRENT_VERSION" "$BUMP_TYPE")
+  echo "🔄 Bumping version to $NEW_VERSION"
+fi
 
 # Update version.txt with the new version
 echo "$NEW_VERSION" > "$VERSION_FILE"
