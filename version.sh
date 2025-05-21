@@ -69,7 +69,7 @@ determine_version_bump() {
   # Initialize bump type
   bump_type="patch"
 
-  # Look for a breaking change (major bump)
+  # Look for breaking changes (major bump)
   if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
     bump_type="major"
   # Look for feature commits (minor bump)
